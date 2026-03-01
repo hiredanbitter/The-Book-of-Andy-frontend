@@ -19,6 +19,7 @@ A full-stack application for searching podcast transcripts using both keyword an
 .
 ├── frontend/          # React (Vite) frontend application
 ├── backend/           # Python FastAPI backend application
+├── supabase/          # Supabase SQL migrations and database schema
 ├── ARCHITECTURE.md    # System architecture and data flow documentation
 ├── .env.example       # Required environment variables
 └── github-issues.md   # Project issue tracker / ticket reference
@@ -64,6 +65,18 @@ The backend will start at [http://localhost:8000](http://localhost:8000).
 
 - Health check: `GET http://localhost:8000/health`
 - API docs (Swagger): `GET http://localhost:8000/docs`
+
+## Database Setup
+
+The Supabase database schema and migrations are in the [`supabase/`](./supabase) directory. See the [Supabase README](./supabase/README.md) for full schema documentation, RLS policies, and implementation decisions.
+
+### Google OAuth
+
+Google OAuth is configured through the Supabase Auth dashboard. To enable it:
+
+1. Create a Google OAuth client in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Add the client ID and secret to the Supabase Auth settings under **Providers > Google**
+3. Set the redirect URL to your Supabase project's auth callback URL
 
 ## Architecture
 
