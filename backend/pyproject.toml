@@ -13,6 +13,10 @@ python-dotenv = ">=1.2.2,<2.0.0"
 supabase = ">=2.13.0,<3.0.0"
 openai = ">=1.59.0,<2.0.0"
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.15.4"
+pytest = ">=9.0.2,<10.0.0"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
@@ -24,7 +28,18 @@ addopts = "-v --tb=short"
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[dependency-groups]
-dev = [
-    "pytest (>=9.0.2,<10.0.0)"
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
 ]
+fixable = ["ALL"]
