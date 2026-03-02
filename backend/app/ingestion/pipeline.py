@@ -7,7 +7,7 @@ episode transcript.
 import logging
 
 from app.ingestion.chunker import TranscriptChunk, build_chunks
-from app.ingestion.config import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE
+from app.ingestion.config import DEFAULT_CHUNK_SIZE
 from app.ingestion.embeddings import generate_embeddings
 from app.ingestion.parser import parse_transcript
 from app.ingestion.storage import store_chunks, verify_episode_exists
@@ -19,13 +19,12 @@ def run_pipeline(
     episode_id: str,
     transcript_path: str,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
-    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> int:
     """Run the full ingestion pipeline for a single episode.
 
     Steps:
       1. Parse the transcript file into individual lines
-      2. Group lines into overlapping chunks
+      2. Group lines into non-overlapping chunks
       3. Generate embeddings for each chunk via OpenAI
       4. Store chunks + embeddings in Supabase
 
@@ -37,8 +36,6 @@ def run_pipeline(
         Local file path to the plain-text transcript file.
     chunk_size:
         Number of lines per chunk.
-    chunk_overlap:
-        Number of lines shared between consecutive chunks.
 
     Returns
     -------
@@ -63,12 +60,11 @@ def run_pipeline(
 
     # Step 2 — Chunk
     logger.info(
-        "Step 2/4: Building chunks (size=%d, overlap=%d)",
+        "Step 2/4: Building chunks (size=%d)",
         chunk_size,
-        chunk_overlap,
     )
     chunks: list[TranscriptChunk] = build_chunks(
-        lines, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        lines, chunk_size=chunk_size
     )
     if not chunks:
         logger.warning("Chunking produced no chunks — aborting.")

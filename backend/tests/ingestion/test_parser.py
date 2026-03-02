@@ -28,7 +28,7 @@ def test_parse_timestamps():
 # lines = parse_transcript(str(data_file))
 # print(lines)
 # Scenario 2
-# chunks = build_chunks(lines, chunk_size=2, chunk_overlap=1)
+# chunks = build_chunks(lines, chunk_size=2)
 # for i, chunk in enumerate(chunks):
 #     print(
 #         f"Chunk {i}: start={chunk.start_timestamp}, "

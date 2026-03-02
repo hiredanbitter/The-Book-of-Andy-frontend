@@ -4,7 +4,7 @@
 Usage:
     poetry run python -m app.ingestion.ingest_transcript
         <episode_id> <transcript_file_path>
-        [--chunk-size N] [--chunk-overlap N]
+        [--chunk-size N]
 
 Arguments:
     episode_id           UUID of the episode in the episodes table.
@@ -12,7 +12,6 @@ Arguments:
 
 Options:
     --chunk-size N       Number of lines per chunk (default: 8).
-    --chunk-overlap N    Number of overlapping lines between chunks (default: 4).
 
 Environment variables required:
     SUPABASE_URL
@@ -26,7 +25,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from app.ingestion.config import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE
+from app.ingestion.config import DEFAULT_CHUNK_SIZE
 from app.ingestion.pipeline import run_pipeline
 
 
@@ -51,15 +50,6 @@ def main() -> None:
         default=DEFAULT_CHUNK_SIZE,
         help=f"Number of lines per chunk (default: {DEFAULT_CHUNK_SIZE}).",
     )
-    parser.add_argument(
-        "--chunk-overlap",
-        type=int,
-        default=DEFAULT_CHUNK_OVERLAP,
-        help=(
-            "Number of overlapping lines between chunks"
-            f" (default: {DEFAULT_CHUNK_OVERLAP})."
-        ),
-    )
 
     args = parser.parse_args()
 
@@ -81,7 +71,6 @@ def main() -> None:
             episode_id=args.episode_id,
             transcript_path=args.transcript_file_path,
             chunk_size=args.chunk_size,
-            chunk_overlap=args.chunk_overlap,
         )
     except Exception:
         logger.exception("Ingestion pipeline failed")
