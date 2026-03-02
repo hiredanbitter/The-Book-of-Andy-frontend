@@ -1,0 +1,5 @@
+This line has no timestamp or speaker at all.
+[broken - format] no colon here
+[0:00:00 - 0:00:15] SPEAKER_01: This one is valid.
+[0:00:16 - 0:00:30] SPEAKER_01: Hello, welcome to the show.
+[0:00:31 - 0:00:45] SPEAKER_02: Thanks for having me.
