@@ -30,8 +30,8 @@ Runs on [http://localhost:8000](http://localhost:8000) by default.
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Health check — returns `{"status": "ok"}` |
-
-Additional endpoints will be added as the project progresses (search, transcripts, bookmarks).
+| `GET` | `/search/keyword` | Keyword search via PostgreSQL full-text search |
+| `GET` | `/search/semantic` | Semantic search via OpenAI embeddings + pgvector cosine similarity |
 
 ## Transcript Ingestion Pipeline
 

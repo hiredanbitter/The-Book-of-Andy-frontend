@@ -7,9 +7,9 @@ API endpoints and business logic for searching podcast transcript chunks.
 | File | Purpose |
 |---|---|
 | `__init__.py` | Package marker |
-| `router.py` | FastAPI router — defines `GET /search/keyword` |
+| `router.py` | FastAPI router — defines `GET /search/keyword` and `GET /search/semantic` |
 | `schemas.py` | Pydantic models for request/response shapes |
-| `service.py` | Business logic — full-text search, context retrieval, metadata joins |
+| `service.py` | Business logic — full-text search, semantic search, context retrieval, metadata joins |
 
 ## Endpoints
 
@@ -52,8 +52,32 @@ Performs keyword search against `transcript_chunks.chunk_text` using PostgreSQL 
 }
 ```
 
+### `GET /search/semantic`
+
+Performs semantic search by embedding the user's query via the OpenAI Embeddings API and finding the closest matching chunks using pgvector cosine similarity.
+
+**Query Parameters**
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `q` | string | *(required)* | Natural-language search term(s) |
+
+Pagination is not supported — the endpoint always returns up to 30 results (hard limit).
+
+**Response Shape**
+
+Same as keyword search (see above), with `page` always `1` and `page_size` always `30`.
+
+**Error Responses**
+
+| Status | Condition |
+|---|---|
+| 503 | OpenAI Embeddings API is unavailable |
+
 ## Implementation Notes
 
 - **Full-text search** is handled by a PostgreSQL function (`keyword_search`) called via Supabase RPC. The function performs the text search, joins with `episodes` and `podcasts` for metadata, and returns paginated results with a total count — all in a single database round-trip.
-- **Context chunks** (2 before, 2 after the matching chunk by `chunk_index` within the same episode) are fetched in a separate batch query per episode to keep the RPC function simple.
+- **Semantic search** embeds the query using the OpenAI Embeddings API (`text-embedding-3-small`) and calls a PostgreSQL function (`semantic_search`) via Supabase RPC that uses pgvector cosine similarity (`<=>` operator) to find the closest matching chunks. Results are hard-limited to 30 (no pagination). If the OpenAI API is unavailable, the endpoint returns a 503.
+- **Context chunks** (2 before, 2 after the matching chunk by `chunk_index` within the same episode) are fetched in a separate batch query per episode to keep the RPC functions simple.
 - The SQL migration for the `keyword_search` function lives at `backend/migrations/001_keyword_search_function.sql`.
+- The SQL migration for the `semantic_search` function lives at `backend/migrations/002_semantic_search_function.sql`.
