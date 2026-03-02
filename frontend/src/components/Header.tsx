@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import './Header.css'
 
@@ -7,9 +8,9 @@ export function Header() {
   return (
     <header className="app-header">
       <div className="header-left">
-        <a href="/" className="header-logo">
+        <Link to="/" className="header-logo">
           Podcast Transcript Search
-        </a>
+        </Link>
       </div>
       <div className="header-right">
         {loading ? (
