@@ -1,15 +1,17 @@
-"""Search service — business logic for keyword search.
+"""Search service — business logic for keyword and semantic search.
 
-Uses PostgreSQL full-text search via Supabase to find matching
-transcript chunks, then fetches surrounding context chunks and
-episode/podcast metadata.
+Uses PostgreSQL full-text search and pgvector cosine similarity via
+Supabase to find matching transcript chunks, then fetches surrounding
+context chunks and episode/podcast metadata.
 """
 
 import logging
 import os
 
+from openai import OpenAI
 from supabase import Client, create_client
 
+from app.ingestion.config import EMBEDDING_MODEL
 from app.search.schemas import ContextChunk, SearchResponse, SearchResult
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,39 @@ def _get_supabase_client() -> Client:
             "must both be set."
         )
     return create_client(url, key)
+
+
+def _get_openai_client() -> OpenAI:
+    """Return an OpenAI client configured from environment variables."""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY environment variable is not set."
+        )
+    return OpenAI(api_key=api_key)
+
+
+def _embed_query(query: str) -> list[float]:
+    """Embed a search query using the OpenAI Embeddings API.
+
+    Parameters
+    ----------
+    query:
+        The user's search query text.
+
+    Returns
+    -------
+    list[float]
+        The embedding vector for the query.
+
+    Raises
+    ------
+    RuntimeError
+        If the OpenAI API call fails.
+    """
+    client = _get_openai_client()
+    response = client.embeddings.create(input=[query], model=EMBEDDING_MODEL)
+    return response.data[0].embedding
 
 
 def _sanitize_query(query: str) -> str:
@@ -213,3 +248,102 @@ def _fetch_context_chunks(
         result_map[(episode_id, chunk_index)] = (before, after)
 
     return result_map
+
+
+def semantic_search(
+    query: str,
+    page: int = 1,
+    page_size: int = 10,
+) -> SearchResponse:
+    """Perform semantic search against transcript chunks.
+
+    Embeds the user's query using the OpenAI Embeddings API and finds
+    the most similar chunk vectors via pgvector cosine similarity.
+    For each matching chunk the 2 preceding and 2 following chunks
+    (by ``chunk_index`` within the same episode) are returned as context.
+
+    Parameters
+    ----------
+    query:
+        The user's natural-language search terms.
+    page:
+        1-based page number.
+    page_size:
+        Number of results per page.
+
+    Returns
+    -------
+    SearchResponse
+        Paginated results with total count.
+
+    Raises
+    ------
+    RuntimeError
+        If the OpenAI Embeddings API call fails.
+    """
+    if not query or not query.strip():
+        return SearchResponse(results=[], total=0, page=page, page_size=page_size)
+
+    # Embed the query
+    query_embedding = _embed_query(query.strip())
+
+    client = _get_supabase_client()
+    offset = (page - 1) * page_size
+
+    # Use Supabase RPC to call the semantic_search database function.
+    result = client.rpc(
+        "semantic_search",
+        {
+            "query_embedding": query_embedding,
+            "result_limit": page_size,
+            "result_offset": offset,
+        },
+    ).execute()
+
+    rows = result.data or []
+
+    if not rows:
+        return SearchResponse(results=[], total=0, page=page, page_size=page_size)
+
+    total = rows[0].get("total_count", 0) if rows else 0
+
+    # Collect all episode IDs and chunk indices to fetch context in bulk
+    context_requests: list[tuple[str, int]] = []
+    for row in rows:
+        context_requests.append((row["episode_id"], row["chunk_index"]))
+
+    # Fetch context chunks for all results
+    context_map = _fetch_context_chunks(client, context_requests)
+
+    results: list[SearchResult] = []
+    for row in rows:
+        episode_id = row["episode_id"]
+        chunk_index = row["chunk_index"]
+        key = (episode_id, chunk_index)
+
+        before, after = context_map.get(key, ([], []))
+
+        results.append(
+            SearchResult(
+                chunk_id=row["chunk_id"],
+                chunk_text=row["chunk_text"],
+                speaker_label=row["speaker_label"],
+                start_timestamp=row["start_timestamp"],
+                end_timestamp=row["end_timestamp"],
+                chunk_index=chunk_index,
+                episode_id=episode_id,
+                episode_title=row["episode_title"],
+                episode_number=row.get("episode_number"),
+                podcast_name=row["podcast_name"],
+                publication_date=row.get("publication_date"),
+                context_before=before,
+                context_after=after,
+            )
+        )
+
+    return SearchResponse(
+        results=results,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
