@@ -35,7 +35,7 @@ Additional endpoints will be added as the project progresses (search, transcript
 
 ## Transcript Ingestion Pipeline
 
-The ingestion pipeline parses plain-text transcript files, chunks them with a sliding window, generates embeddings via OpenAI, and stores everything in Supabase. See the [ingestion module README](./app/ingestion/README.md) for full details.
+The ingestion pipeline parses plain-text transcript files, chunks them into non-overlapping fixed-size groups of lines, generates embeddings via OpenAI, and stores everything in Supabase. See the [ingestion module README](./app/ingestion/README.md) for full details.
 
 ```bash
 # Step 1: Create a podcast (idempotent — returns existing ID if name matches)
@@ -49,8 +49,8 @@ poetry run python -m app.ingestion.create_episode <podcast_id> "Episode Title" \
 # Step 3: Ingest a transcript (validates episode exists first)
 poetry run python -m app.ingestion.ingest_transcript <episode_id> <transcript_file_path>
 
-# With custom chunk settings
-poetry run python -m app.ingestion.ingest_transcript <episode_id> <transcript_file_path> --chunk-size 10 --chunk-overlap 5
+# With custom chunk size
+poetry run python -m app.ingestion.ingest_transcript <episode_id> <transcript_file_path> --chunk-size 10
 ```
 
 Required environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`.

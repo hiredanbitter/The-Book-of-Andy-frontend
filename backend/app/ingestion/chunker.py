@@ -1,14 +1,14 @@
-"""Sliding-window chunker for transcript lines.
+"""Fixed-size chunker for transcript lines.
 
-Groups parsed transcript lines into overlapping chunks.  The chunk size
-and overlap are configurable via function parameters, with sensible
-defaults from ``config.py``.
+Groups parsed transcript lines into non-overlapping chunks.  The chunk
+size is configurable via a function parameter, with a sensible default
+from ``config.py``.
 """
 
 import logging
 from dataclasses import dataclass
 
-from app.ingestion.config import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE
+from app.ingestion.config import DEFAULT_CHUNK_SIZE
 from app.ingestion.parser import TranscriptLine
 
 logger = logging.getLogger(__name__)
@@ -28,9 +28,8 @@ class TranscriptChunk:
 def build_chunks(
     lines: list[TranscriptLine],
     chunk_size: int = DEFAULT_CHUNK_SIZE,
-    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[TranscriptChunk]:
-    """Create overlapping chunks from a list of parsed transcript lines.
+    """Create non-overlapping chunks from a list of parsed transcript lines.
 
     Parameters
     ----------
@@ -38,8 +37,6 @@ def build_chunks(
         Ordered list of transcript lines for a single episode.
     chunk_size:
         Number of lines per chunk (default from config).
-    chunk_overlap:
-        Number of lines shared between consecutive chunks (default from config).
 
     Returns
     -------
@@ -49,16 +46,9 @@ def build_chunks(
     if not lines:
         return []
 
-    if chunk_overlap >= chunk_size:
-        raise ValueError(
-            f"chunk_overlap ({chunk_overlap}) must be less than "
-            f"chunk_size ({chunk_size})"
-        )
-
-    step = chunk_size - chunk_overlap
     chunks: list[TranscriptChunk] = []
 
-    for chunk_index, start in enumerate(range(0, len(lines), step)):
+    for chunk_index, start in enumerate(range(0, len(lines), chunk_size)):
         window = lines[start : start + chunk_size]
         if not window:
             break
@@ -80,15 +70,10 @@ def build_chunks(
             )
         )
 
-        # If the window already reached the end, stop
-        if start + chunk_size >= len(lines):
-            break
-
     logger.info(
-        "Created %d chunks (chunk_size=%d, overlap=%d) from %d lines",
+        "Created %d chunks (chunk_size=%d) from %d lines",
         len(chunks),
         chunk_size,
-        chunk_overlap,
         len(lines),
     )
     return chunks

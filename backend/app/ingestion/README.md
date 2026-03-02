@@ -1,6 +1,6 @@
 # Ingestion — Transcript Chunking & Embedding Pipeline
 
-This module implements the transcript ingestion pipeline that parses plain-text transcript files, chunks them using a sliding window strategy, generates embeddings via the OpenAI API, and stores everything in Supabase.
+This module implements the transcript ingestion pipeline that parses plain-text transcript files, chunks them into non-overlapping fixed-size groups of lines, generates embeddings via the OpenAI API, and stores everything in Supabase.
 
 ## Purpose
 
@@ -10,9 +10,9 @@ Converts raw transcript text files into searchable, embedded chunks in the `tran
 
 | File | Description |
 |------|-------------|
-| `config.py` | Configurable pipeline parameters (chunk size, overlap, embedding model) |
+| `config.py` | Configurable pipeline parameters (chunk size, embedding model) |
 | `parser.py` | Parses plain-text transcript files into structured `TranscriptLine` objects |
-| `chunker.py` | Groups parsed lines into overlapping `TranscriptChunk` objects using a sliding window |
+| `chunker.py` | Groups parsed lines into non-overlapping `TranscriptChunk` objects of fixed size |
 | `embeddings.py` | Generates embedding vectors via the OpenAI Embeddings API |
 | `storage.py` | Inserts chunks with embeddings into the Supabase `transcript_chunks` table; verifies episode existence |
 | `pipeline.py` | Orchestrates the full parse → chunk → embed → store pipeline (validates episode exists first) |
@@ -52,8 +52,8 @@ The ingestion pipeline requires a valid episode ID (it verifies the episode exis
 ```bash
 poetry run python -m app.ingestion.ingest_transcript <episode_id> <transcript_file_path>
 
-# With custom chunk settings
-poetry run python -m app.ingestion.ingest_transcript <episode_id> <transcript_file_path> --chunk-size 10 --chunk-overlap 5
+# With custom chunk size
+poetry run python -m app.ingestion.ingest_transcript <episode_id> <transcript_file_path> --chunk-size 10
 ```
 
 ### Full Workflow Example
@@ -96,11 +96,11 @@ The parser expects plain-text files with lines in this format:
 
 ## Chunking Strategy
 
-Lines are grouped into overlapping chunks using a sliding window:
+Lines are grouped into non-overlapping chunks of fixed size:
 
-- **Default chunk size**: 8 lines per chunk
-- **Default overlap**: 4 lines shared between consecutive chunks
-- Both parameters are configurable via CLI flags or by modifying `config.py`
+- **Default chunk size**: 1 line per chunk
+- Each line appears in exactly one chunk, with no lines shared between consecutive chunks
+- The chunk size is configurable via a CLI flag or by modifying `config.py`
 
 Each chunk stores:
 - The combined raw text of all lines in the chunk
@@ -112,8 +112,8 @@ Each chunk stores:
 
 ## Implementation Decisions
 
-- **Sliding window with overlap** ensures that no content falls at the boundary between chunks and is missed during search.
-- **Configurable parameters** allow tuning chunk size and overlap without code changes.
+- **Non-overlapping fixed-size chunks** ensure that each line appears in exactly one chunk, eliminating duplicate or near-duplicate search results.
+- **Configurable chunk size** allows tuning via a CLI flag or `config.py` without code changes.
 - **`text-embedding-3-small`** was chosen as the embedding model for its good balance of quality and cost, matching the 1536-dimensional vector column in the database schema.
 - **Malformed line handling** logs warnings but does not abort the pipeline, following the principle of processing as much valid data as possible.
 - **Chunk text preserves the original line format** (timestamps, speaker labels) so that the stored text is self-contained and useful for display.
