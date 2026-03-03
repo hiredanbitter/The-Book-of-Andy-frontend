@@ -313,7 +313,9 @@ def semantic_search(
             results=[], total=0, page=1, page_size=SEMANTIC_SEARCH_LIMIT
         )
 
-    total = rows[0].get("total_count", 0) if rows else 0
+    # Use the actual number of returned results as total (not the
+    # misleading COUNT(*) OVER() which counts all chunks in the DB).
+    total = len(rows)
 
     # Collect all episode IDs and chunk indices to fetch context in bulk
     context_requests: list[tuple[str, int]] = []
