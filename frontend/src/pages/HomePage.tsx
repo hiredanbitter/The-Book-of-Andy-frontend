@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { SearchBar } from '../components/SearchBar'
 import { SearchResultCard } from '../components/SearchResultCard'
+import { ScrollToTop } from '../components/ScrollToTop'
 import { Pagination } from '../components/Pagination'
 import { Toast } from '../components/Toast'
 import { useSearch } from '../hooks/useSearch'
@@ -82,7 +83,9 @@ export function HomePage() {
       {!loading && !error && results.length > 0 && (
         <div className="results-section">
           <p className="results-count">
-            {total} result{total !== 1 ? 's' : ''} found
+            {mode === 'semantic'
+              ? `Showing the top ${total} result${total !== 1 ? 's' : ''}`
+              : `${total} result${total !== 1 ? 's' : ''} found`}
           </p>
           <div className="results-list">
             {results.map((result) => (
@@ -127,6 +130,8 @@ export function HomePage() {
           onDismiss={handleToastDismiss}
         />
       )}
+
+      <ScrollToTop />
     </div>
   )
 }
