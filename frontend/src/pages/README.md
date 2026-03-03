@@ -4,7 +4,7 @@ React page components mapped to routes in `App.tsx`.
 
 ## Key Files
 
-- **`HomePage.tsx`** — Landing page with the search bar and search results. Mounted at `/`.
+- **`HomePage.tsx`** — Landing page with the search bar and search results. Integrates `useBookmarks` hook to pass bookmark state and save handler to each `SearchResultCard`. Mounted at `/`.
 - **`AuthCallback.tsx`** — Handles the OAuth redirect callback after Google sign-in. Mounted at `/auth/callback`.
 - **`TranscriptPage.tsx`** — Transcript detail page showing full episode transcript with metadata. Mounted at `/episodes/:episodeId/transcript`.
 - **`TranscriptPage.css`** — Styles for the transcript detail page including episode metadata, chunk rendering, highlight styling, and responsive breakpoints.
