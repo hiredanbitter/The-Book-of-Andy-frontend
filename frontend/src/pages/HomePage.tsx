@@ -2,6 +2,8 @@ import { SearchBar } from '../components/SearchBar'
 import { SearchResultCard } from '../components/SearchResultCard'
 import { Pagination } from '../components/Pagination'
 import { useSearch } from '../hooks/useSearch'
+import { useBookmarks } from '../hooks/useBookmarks'
+import { useAuth } from '../hooks/useAuth'
 import './HomePage.css'
 
 export function HomePage() {
@@ -20,6 +22,10 @@ export function HomePage() {
     search,
     goToPage,
   } = useSearch()
+
+  const { user } = useAuth()
+  const isLoggedIn = !!user
+  const { bookmarkedChunkIds, saveBookmark } = useBookmarks()
 
   return (
     <div className={`home-page ${hasSearched ? 'has-results' : ''}`}>
@@ -60,7 +66,13 @@ export function HomePage() {
           </p>
           <div className="results-list">
             {results.map((result) => (
-              <SearchResultCard key={result.chunk_id} result={result} />
+              <SearchResultCard
+                key={result.chunk_id}
+                result={result}
+                isLoggedIn={isLoggedIn}
+                isBookmarked={bookmarkedChunkIds.has(result.chunk_id)}
+                onBookmark={saveBookmark}
+              />
             ))}
           </div>
           {mode === 'keyword' && (

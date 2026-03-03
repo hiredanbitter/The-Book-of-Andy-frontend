@@ -1,8 +1,15 @@
+import { useState } from 'react'
 import type { SearchResult } from '../types/search'
 import './SearchResultCard.css'
 
 interface SearchResultCardProps {
   result: SearchResult
+  /** Whether the current user is authenticated. */
+  isLoggedIn: boolean
+  /** Whether this chunk is already bookmarked by the current user. */
+  isBookmarked: boolean
+  /** Callback to save a bookmark. Returns success/error info. */
+  onBookmark: (chunkId: string) => Promise<{ success: boolean; error?: string }>
 }
 
 /**
@@ -31,8 +38,42 @@ function buildTranscriptUrl(result: SearchResult): string {
   return `/episodes/${result.episode_id}/transcript?chunk=${result.chunk_id}`
 }
 
-export function SearchResultCard({ result }: SearchResultCardProps) {
+export function SearchResultCard({
+  result,
+  isLoggedIn,
+  isBookmarked,
+  onBookmark,
+}: SearchResultCardProps) {
   const transcriptUrl = buildTranscriptUrl(result)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(isBookmarked)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  // Sync saved state when isBookmarked prop changes (e.g. after initial fetch)
+  if (isBookmarked && !saved) {
+    setSaved(true)
+  }
+
+  const handleBookmarkClick = async (e: React.MouseEvent) => {
+    // Prevent the card link from navigating
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!isLoggedIn || saved || saving) return
+
+    setSaving(true)
+    setErrorMsg(null)
+
+    const bookmarkResult = await onBookmark(result.chunk_id)
+
+    setSaving(false)
+    if (bookmarkResult.success) {
+      setSaved(true)
+    } else if (bookmarkResult.error) {
+      setErrorMsg(bookmarkResult.error)
+    }
+  }
 
   return (
     <a
@@ -42,6 +83,51 @@ export function SearchResultCard({ result }: SearchResultCardProps) {
       className="result-card"
       aria-label={`View transcript: ${result.episode_title}`}
     >
+      {/* ---- Bookmark button ---- */}
+      <div className="bookmark-button-wrapper">
+        <button
+          type="button"
+          className={`bookmark-button ${saved ? 'bookmarked' : ''} ${saving ? 'saving' : ''}`}
+          onClick={handleBookmarkClick}
+          onMouseEnter={() => !isLoggedIn && setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          disabled={saving}
+          aria-label={saved ? 'Bookmarked' : 'Save bookmark'}
+        >
+          {saving ? (
+            <span className="bookmark-spinner" aria-hidden="true" />
+          ) : saved ? (
+            <svg
+              className="bookmark-icon"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M5 3a2 2 0 0 0-2 2v16l9-4 9 4V5a2 2 0 0 0-2-2H5z" />
+            </svg>
+          ) : (
+            <svg
+              className="bookmark-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M5 3a2 2 0 0 0-2 2v16l9-4 9 4V5a2 2 0 0 0-2-2H5z" />
+            </svg>
+          )}
+        </button>
+        {showTooltip && !isLoggedIn && (
+          <span className="bookmark-tooltip" role="tooltip">
+            Log in to save bookmarks
+          </span>
+        )}
+        {errorMsg && (
+          <span className="bookmark-error">{errorMsg}</span>
+        )}
+      </div>
+
       {/* ---- Context before ---- */}
       {result.context_before.length > 0 && (
         <div className="context-lines context-before">

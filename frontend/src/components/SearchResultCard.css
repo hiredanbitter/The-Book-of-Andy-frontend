@@ -1,5 +1,6 @@
 .result-card {
   display: block;
+  position: relative;
   text-decoration: none;
   color: inherit;
   background: rgba(255, 255, 255, 0.04);
@@ -88,4 +89,105 @@
 
 .meta-timestamp {
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- Bookmark button ---- */
+.bookmark-button-wrapper {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  z-index: 1;
+}
+
+.bookmark-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #888;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.bookmark-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #bbb;
+}
+
+.bookmark-button.bookmarked {
+  color: #646cff;
+  background: rgba(100, 108, 255, 0.12);
+}
+
+.bookmark-button.bookmarked:hover {
+  background: rgba(100, 108, 255, 0.18);
+}
+
+.bookmark-button.saving {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.bookmark-button:disabled {
+  cursor: default;
+}
+
+.bookmark-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Spinner for loading state */
+.bookmark-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #646cff;
+  border-radius: 50%;
+  animation: bookmark-spin 0.6s linear infinite;
+}
+
+@keyframes bookmark-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Tooltip for logged-out users */
+.bookmark-tooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: #eee;
+  background: #333;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Inline error message */
+.bookmark-error {
+  margin-top: 4px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 4px;
+  white-space: nowrap;
+  max-width: 220px;
+  text-align: right;
 }
