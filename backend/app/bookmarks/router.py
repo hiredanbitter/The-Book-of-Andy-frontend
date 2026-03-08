@@ -11,9 +11,9 @@ from app.bookmarks.schemas import (
 )
 from app.bookmarks.service import (
     BOOKMARK_LIMIT,
+    BookmarkLimitReachedError,
     create_bookmark,
     delete_bookmark,
-    get_bookmark_count,
     get_bookmark_owner,
     list_bookmarks,
 )
@@ -31,8 +31,9 @@ def create_bookmark_endpoint(
     Enforces a maximum of 100 bookmarks per user. Returns the new
     bookmark with full chunk data and episode metadata.
     """
-    count = get_bookmark_count(user_id)
-    if count >= BOOKMARK_LIMIT:
+    try:
+        bookmark = create_bookmark(user_id=user_id, chunk_id=body.chunk_id)
+    except BookmarkLimitReachedError:
         return JSONResponse(
             status_code=400,
             content={
@@ -42,8 +43,6 @@ def create_bookmark_endpoint(
                 )
             },
         )
-
-    bookmark = create_bookmark(user_id=user_id, chunk_id=body.chunk_id)
     return bookmark
 
 

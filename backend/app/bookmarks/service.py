@@ -52,8 +52,16 @@ def get_bookmark_count(user_id: str) -> int:
     return result.count if result.count is not None else 0
 
 
+class BookmarkLimitReachedError(Exception):
+    """Raised when a user has reached the maximum number of bookmarks."""
+
+
 def create_bookmark(user_id: str, chunk_id: str) -> BookmarkResponse:
     """Create a new bookmark linking a user to a transcript chunk.
+
+    Uses the ``create_bookmark_atomic`` Supabase RPC function which
+    checks the bookmark count and inserts in a single transaction,
+    preventing race conditions from concurrent requests.
 
     Parameters
     ----------
@@ -69,21 +77,29 @@ def create_bookmark(user_id: str, chunk_id: str) -> BookmarkResponse:
 
     Raises
     ------
+    BookmarkLimitReachedError
+        If the user already has 100 bookmarks.
     ValueError
         If the chunk_id does not exist.
     """
     client = _get_supabase_client()
 
-    # Insert the bookmark
-    insert_result = (
-        client.table("bookmarks")
-        .insert({"user_id": user_id, "chunk_id": chunk_id})
-        .execute()
-    )
+    try:
+        rpc_result = client.rpc(
+            "create_bookmark_atomic",
+            {"p_user_id": user_id, "p_chunk_id": chunk_id, "p_limit": BOOKMARK_LIMIT},
+        ).execute()
+    except Exception as exc:
+        if "BOOKMARK_LIMIT_REACHED" in str(exc):
+            raise BookmarkLimitReachedError(
+                f"Bookmark limit reached. You can save a maximum of "
+                f"{BOOKMARK_LIMIT} bookmarks."
+            ) from exc
+        raise
 
-    bookmark_row = insert_result.data[0]
-    bookmark_id = bookmark_row["id"]
-    created_at = bookmark_row["created_at"]
+    bookmark_row = rpc_result.data[0]
+    bookmark_id = bookmark_row["bookmark_id"]
+    created_at = bookmark_row["bookmark_created_at"]
 
     # Fetch chunk data with episode metadata
     return _build_bookmark_response(client, bookmark_id, chunk_id, created_at)

@@ -32,10 +32,13 @@ Runs on [http://localhost:8000](http://localhost:8000) by default.
 | `GET` | `/health` | Health check — returns `{"status": "ok"}` |
 | `GET` | `/search/keyword` | Keyword search via PostgreSQL full-text search |
 | `GET` | `/search/semantic` | Semantic search via OpenAI embeddings + pgvector cosine similarity |
+| `POST` | `/bookmarks` | Create a bookmark (atomic 100-cap enforcement via DB function) |
+| `GET` | `/bookmarks` | List all bookmarks for the authenticated user |
+| `DELETE` | `/bookmarks/{id}` | Delete a bookmark owned by the authenticated user |
 
 ## Transcript Ingestion Pipeline
 
-The ingestion pipeline parses plain-text transcript files, chunks them into non-overlapping fixed-size groups of lines, generates embeddings via OpenAI, and stores everything in Supabase. See the [ingestion module README](./app/ingestion/README.md) for full details.
+The ingestion pipeline parses plain-text transcript files, chunks them into fixed-size groups of lines, generates embeddings via OpenAI, and stores everything in Supabase. See the [ingestion module README](./app/ingestion/README.md) for full details.
 
 ```bash
 # Step 1: Create a podcast (idempotent — returns existing ID if name matches)
