@@ -53,7 +53,7 @@ poetry run python -m app.ingestion.ingest_transcript <episode_id> <transcript_fi
 poetry run python -m app.ingestion.ingest_transcript <episode_id> <transcript_file_path> --chunk-size 10
 ```
 
-Required environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`.
+Required environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `OPENAI_API_KEY`.
 
 ## Linting
 
