@@ -9,6 +9,7 @@ SQL migration files for the Supabase PostgreSQL database. These are applied via 
 | `001_keyword_search_function.sql` | Creates the `keyword_search` RPC function for full-text search with episode/podcast metadata joins and pagination |
 | `002_semantic_search_function.sql` | Creates the `semantic_search` RPC function for pgvector cosine similarity search with episode/podcast metadata joins (returns up to 30 results, no pagination) |
 | `003_create_bookmark_atomic_function.sql` | Creates the `create_bookmark_atomic` RPC function that atomically checks the per-user bookmark cap and inserts a new bookmark in a single transaction, preventing race conditions |
+| `004_add_fk_indexes.sql` | Adds B-tree indexes on foreign key columns (`bookmarks.chunk_id`, `bookmarks.user_id`, `transcript_chunks.episode_id`, `episodes.podcast_id`) to prevent full table scans on joins |
 
 ## How to Apply
 
