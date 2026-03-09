@@ -177,23 +177,19 @@ class TestCreateBookmark:
         mock_svc = MagicMock()
         mock_service_client.return_value = mock_svc
 
-        # Mock bookmark count query (< 100)
-        mock_count_select = MagicMock()
-        mock_count_select.eq.return_value = mock_count_select
-        mock_count_select.execute.return_value = MagicMock(count=5)
-
-        # Mock bookmark insert
-        mock_insert = MagicMock()
-        mock_insert.execute.return_value = MagicMock(
+        # Mock RPC call for atomic bookmark creation
+        mock_rpc = MagicMock()
+        mock_rpc.execute.return_value = MagicMock(
             data=[
                 {
-                    "id": MOCK_BOOKMARK_ID,
-                    "user_id": MOCK_USER_ID,
-                    "chunk_id": MOCK_CHUNK_ID,
-                    "created_at": "2025-06-01T12:00:00Z",
+                    "bookmark_id": MOCK_BOOKMARK_ID,
+                    "bookmark_user_id": MOCK_USER_ID,
+                    "bookmark_chunk_id": MOCK_CHUNK_ID,
+                    "bookmark_created_at": "2025-06-01T12:00:00Z",
                 }
             ]
         )
+        mock_svc.rpc.return_value = mock_rpc
 
         # Mock chunk+episode fetch
         mock_chunk_select = MagicMock()
@@ -201,27 +197,7 @@ class TestCreateBookmark:
         mock_chunk_select.execute.return_value = MagicMock(
             data=_mock_chunk_with_episode()
         )
-
-        call_count = 0
-
-        def table_side_effect(table_name):
-            nonlocal call_count
-            call_count += 1
-            mock_table = MagicMock()
-            if table_name == "bookmarks" and call_count == 1:
-                # Count query
-                mock_table.select.return_value = mock_count_select
-                return mock_table
-            elif table_name == "bookmarks" and call_count == 2:
-                # Insert query
-                mock_table.insert.return_value = mock_insert
-                return mock_table
-            else:
-                # Chunk fetch
-                mock_table.select.return_value = mock_chunk_select
-                return mock_table
-
-        mock_svc.table.side_effect = table_side_effect
+        mock_svc.table.return_value.select.return_value = mock_chunk_select
 
         with _patch_jwks():
             response = client.post(
@@ -240,6 +216,12 @@ class TestCreateBookmark:
         assert data["podcast_name"] == "Test Podcast"
         assert data["created_at"] == "2025-06-01T12:00:00Z"
 
+        # Verify RPC was called with correct arguments
+        mock_svc.rpc.assert_called_once_with(
+            "create_bookmark_atomic",
+            {"p_user_id": MOCK_USER_ID, "p_chunk_id": MOCK_CHUNK_ID, "p_limit": 100},
+        )
+
     @patch("app.bookmarks.service._get_supabase_client")
     def test_create_bookmark_limit_reached(
         self, mock_service_client
@@ -249,12 +231,10 @@ class TestCreateBookmark:
         mock_svc = MagicMock()
         mock_service_client.return_value = mock_svc
 
-        # Mock bookmark count = 100
-        mock_count_select = MagicMock()
-        mock_count_select.eq.return_value = mock_count_select
-        mock_count_select.execute.return_value = MagicMock(count=100)
-
-        mock_svc.table.return_value.select.return_value = mock_count_select
+        # Mock RPC raising BOOKMARK_LIMIT_REACHED error
+        mock_rpc = MagicMock()
+        mock_rpc.execute.side_effect = Exception("BOOKMARK_LIMIT_REACHED")
+        mock_svc.rpc.return_value = mock_rpc
 
         with _patch_jwks():
             response = client.post(
@@ -264,6 +244,64 @@ class TestCreateBookmark:
             )
         assert response.status_code == 400
         assert "limit" in response.json()["detail"].lower()
+
+    @patch("app.bookmarks.service._get_supabase_client")
+    def test_create_bookmark_atomic_prevents_race_condition(
+        self, mock_service_client
+    ):
+        """Concurrent requests are serialised by the database function.
+
+        The RPC function uses SELECT ... FOR UPDATE to lock existing bookmark
+        rows, so two simultaneous requests cannot both pass the count check.
+        Here we verify that when the RPC raises BOOKMARK_LIMIT_REACHED for the
+        second call, the endpoint correctly returns 400.
+        """
+        mock_svc = MagicMock()
+        mock_service_client.return_value = mock_svc
+
+        # First call succeeds, second raises limit error
+        mock_rpc_ok = MagicMock()
+        mock_rpc_ok.execute.return_value = MagicMock(
+            data=[
+                {
+                    "bookmark_id": MOCK_BOOKMARK_ID,
+                    "bookmark_user_id": MOCK_USER_ID,
+                    "bookmark_chunk_id": MOCK_CHUNK_ID,
+                    "bookmark_created_at": "2025-06-01T12:00:00Z",
+                }
+            ]
+        )
+
+        mock_rpc_fail = MagicMock()
+        mock_rpc_fail.execute.side_effect = Exception("BOOKMARK_LIMIT_REACHED")
+
+        mock_svc.rpc.side_effect = [mock_rpc_ok, mock_rpc_fail]
+
+        # Mock chunk+episode fetch for the successful call
+        mock_chunk_select = MagicMock()
+        mock_chunk_select.eq.return_value = mock_chunk_select
+        mock_chunk_select.execute.return_value = MagicMock(
+            data=_mock_chunk_with_episode()
+        )
+        mock_svc.table.return_value.select.return_value = mock_chunk_select
+
+        with _patch_jwks():
+            # First request succeeds
+            resp1 = client.post(
+                "/bookmarks",
+                json={"chunk_id": MOCK_CHUNK_ID},
+                headers=_auth_header(),
+            )
+            # Second request hits the limit
+            resp2 = client.post(
+                "/bookmarks",
+                json={"chunk_id": "chunk-002"},
+                headers=_auth_header(),
+            )
+
+        assert resp1.status_code == 201
+        assert resp2.status_code == 400
+        assert "limit" in resp2.json()["detail"].lower()
 
     def test_create_bookmark_missing_chunk_id(self):
         """POST /bookmarks without chunk_id returns 422."""
