@@ -1,0 +1,8 @@
+whisperx
+pyannote.audio
+torch
+tqdm
+feedparser
+requests
+supabase
+openai
