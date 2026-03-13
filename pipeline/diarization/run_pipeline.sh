@@ -111,7 +111,7 @@ for inst in data:
         sys.exit(0)
 print('', file=sys.stderr)
 sys.exit(1)
-")
+" || true)
 
 if [ -n "$INSTANCE_ID" ]; then
     log "Found instance ID: $INSTANCE_ID. Terminating..."

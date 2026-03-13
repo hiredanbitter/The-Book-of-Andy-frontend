@@ -2,6 +2,7 @@
 
 import logging
 import os
+import shlex
 import time
 from pathlib import Path
 
@@ -27,6 +28,10 @@ def _load_cloud_init_script(episode_ids: list[str]) -> str:
     )
     template = script_path.read_text()
 
+    # Strip the shebang from the template since we prepend our own
+    if template.startswith("#!/"):
+        template = template.split("\n", 1)[1]
+
     env_vars = {
         "SUPABASE_URL": os.environ["SUPABASE_URL"],
         "SUPABASE_SERVICE_ROLE_KEY": os.environ["SUPABASE_SERVICE_ROLE_KEY"],
@@ -37,8 +42,9 @@ def _load_cloud_init_script(episode_ids: list[str]) -> str:
         "GITHUB_DEPLOY_TOKEN": os.environ["GITHUB_DEPLOY_TOKEN"],
     }
 
+    # Use shlex.quote to safely handle special characters in secret values
     export_block = "\n".join(
-        f'export {key}="{value}"' for key, value in env_vars.items()
+        f"export {key}={shlex.quote(value)}" for key, value in env_vars.items()
     )
 
     cloud_init = f"#!/bin/bash\n{export_block}\n{template}"
